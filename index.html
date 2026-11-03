@@ -1,0 +1,1470 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>분리수거 도우미</title>
+
+<!-- Teachable Machine 이미지 인식 라이브러리 -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 28px 16px;
+    background: #f3f6f8;
+    color: #263238;
+    font-family: Arial, "Malgun Gothic", sans-serif;
+}
+
+.container {
+    max-width: 1000px;
+    margin: auto;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+header h1 {
+    color: #16865b;
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+header p {
+    color: #718096;
+    line-height: 1.6;
+}
+
+.card {
+    background: white;
+    padding: 23px;
+    border-radius: 16px;
+    margin-bottom: 18px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.04);
+}
+
+h2 {
+    font-size: 19px;
+    margin: 0 0 18px;
+}
+
+input, button {
+    font: inherit;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid #d5dce2;
+    border-radius: 9px;
+    margin: 8px 0 12px;
+}
+
+button {
+    padding: 12px 17px;
+    border: none;
+    border-radius: 9px;
+    background: #16865b;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 4px;
+}
+
+button:hover {
+    opacity: .85;
+}
+
+button:disabled {
+    background: #aeb9b3;
+    cursor: not-allowed;
+}
+
+.secondary {
+    background: #526579;
+}
+
+.danger {
+    background: #d94b4b;
+}
+
+.active {
+    background: #125c43;
+    outline: 3px solid #bce5d1;
+}
+
+.status {
+    background: #f1f4f6;
+    padding: 12px;
+    border-radius: 9px;
+    margin-top: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.ok {
+    color: #16865b;
+}
+
+.error {
+    color: #d23e3e;
+}
+
+.small {
+    font-size: 13px;
+    color: #7a8790;
+    line-height: 1.6;
+}
+
+.mode-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.mode-buttons button {
+    flex: 1;
+}
+
+#preview {
+    min-height: 210px;
+    border-radius: 12px;
+    background: #f1f4f6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    color: #87939b;
+}
+
+#preview img,
+#preview canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+}
+
+#cameraPreview {
+    min-height: 200px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f1f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #87939b;
+}
+
+#cameraPreview canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+#uploadedImage {
+    display: none;
+}
+
+#resultBox {
+    padding: 25px 15px;
+    border-radius: 13px;
+    text-align: center;
+    background: #f1f4f6;
+}
+
+#resultBox h3 {
+    font-size: 28px;
+    margin: 7px;
+}
+
+.success {
+    background: #e4f7eb !important;
+    color: #167044;
+}
+
+.warning {
+    background: #fff0ed !important;
+    color: #bd3838;
+}
+
+.neutral {
+    background: #f1f4f6 !important;
+    color: #52616b;
+}
+
+.progress-row {
+    margin: 15px 0;
+}
+
+.progress-title {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+progress {
+    width: 100%;
+    height: 13px;
+    accent-color: #16865b;
+}
+
+input[type="range"] {
+    width: 100%;
+    accent-color: #16865b;
+}
+
+.guide {
+    padding: 16px;
+    border-radius: 11px;
+    background: #edf7f2;
+    border-left: 4px solid #16865b;
+    line-height: 1.8;
+}
+
+.microbit {
+    max-width: 340px;
+    margin: 10px auto;
+    padding: 24px;
+    background: #303b43;
+    border-radius: 28px;
+    text-align: center;
+    color: white;
+}
+
+.microbit h3 {
+    margin: 0 0 20px;
+}
+
+.led-grid {
+    width: 205px;
+    margin: auto;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 9px;
+    padding: 12px;
+    background: #182126;
+    border-radius: 12px;
+}
+
+.led {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #3c494f;
+}
+
+.led.green {
+    background: #28df80;
+    box-shadow: 0 0 10px #28df80;
+}
+
+.led.red {
+    background: #ff5353;
+    box-shadow: 0 0 10px #ff5353;
+}
+
+.led-state {
+    margin-top: 20px;
+    font-size: 17px;
+    font-weight: bold;
+}
+
+.manual-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.log {
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 12px;
+    border-radius: 9px;
+    background: #f4f6f7;
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+footer {
+    text-align: center;
+    color: #8b969e;
+    font-size: 12px;
+    padding: 20px;
+}
+
+@media(max-width:600px) {
+    body {
+        padding: 14px 9px;
+    }
+
+    .card {
+        padding: 17px;
+    }
+
+    header h1 {
+        font-size: 25px;
+    }
+
+    .mode-buttons {
+        flex-direction: column;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+    <h1>♻️ 분리수거 도우미</h1>
+    <p>
+        AI가 쓰레기의 종류를 인식하고<br>
+        올바른 분리수거 방법을 안내합니다.
+    </p>
+</header>
+
+<!-- 1. AI 모델 연결 -->
+<section class="card">
+
+    <h2>① AI 모델 연결</h2>
+
+    <label>Teachable Machine 모델 URL</label>
+
+    <input
+        type="text"
+        id="modelURL"
+        value="https://teachablemachine.withgoogle.com/models/Pd7LmMqQX/"
+    >
+
+    <button id="loadBtn" onclick="loadModel()">
+        AI 모델 불러오기
+    </button>
+
+    <div id="modelStatus" class="status">
+        AI 모델을 불러와 주세요.
+    </div>
+
+    <p class="small">
+        학습한 이미지 인식 모델의 URL을 입력하세요.
+    </p>
+
+</section>
+
+
+<!-- 2. 인식 방식 -->
+<section class="card">
+
+    <h2>② 인식 방식 선택</h2>
+
+    <div class="mode-buttons">
+
+        <button id="uploadModeBtn"
+            class="active"
+            onclick="switchMode('upload')">
+            이미지 업로드
+        </button>
+
+        <button id="cameraModeBtn"
+            class="secondary"
+            onclick="switchMode('camera')">
+            실시간 카메라
+        </button>
+
+    </div>
+
+    <!-- 이미지 업로드 -->
+    <div id="uploadArea">
+
+        <input
+            type="file"
+            id="imageInput"
+            accept="image/jpeg,image/png"
+        >
+
+        <div id="preview">
+            이미지를 선택하면 여기에 표시됩니다.
+        </div>
+
+        <button id="analyzeBtn"
+            onclick="analyzeImage()"
+            disabled>
+            이미지 분석하기
+        </button>
+
+    </div>
+
+    <!-- 카메라 -->
+    <div id="cameraArea" style="display:none">
+
+        <div id="cameraPreview">
+            카메라가 실행되지 않았습니다.
+        </div>
+
+        <button onclick="startCamera()">
+            카메라 시작
+        </button>
+
+        <button class="danger" onclick="stopCamera()">
+            카메라 중지
+        </button>
+
+    </div>
+
+</section>
+
+
+<!-- 3. 신뢰도 -->
+<section class="card">
+
+    <h2>③ AI 인식 신뢰도 설정</h2>
+
+    <label>
+        최소 신뢰도:
+        <strong id="confidenceText">80%</strong>
+    </label>
+
+    <input
+        type="range"
+        id="confidence"
+        min="50"
+        max="100"
+        value="80"
+        oninput="updateConfidence()"
+    >
+
+    <p class="small">
+        AI의 인식 확률이 설정한 기준보다 낮으면
+        불확실한 결과로 판단합니다.
+    </p>
+
+</section>
+
+
+<!-- 4. 분석 결과 -->
+<section class="card">
+
+    <h2>④ AI 분석 결과</h2>
+
+    <div id="resultBox" class="neutral">
+
+        <h3 id="resultName">분석 대기 중</h3>
+
+        <p id="resultMessage">
+            쓰레기 이미지를 분석해 주세요.
+        </p>
+
+    </div>
+
+    <h3 style="font-size:16px;margin-top:25px;">
+        클래스별 인식 확률
+    </h3>
+
+    <div id="probabilities">
+        아직 분석 결과가 없습니다.
+    </div>
+
+</section>
+
+
+<!-- 5. 분리수거 안내 -->
+<section class="card">
+
+    <h2>⑤ 분리수거 안내</h2>
+
+    <div id="guideBox" class="guide">
+
+        AI가 쓰레기를 인식하면<br>
+        올바른 분리수거 방법을 알려드립니다.
+
+    </div>
+
+</section>
+
+
+<!-- 6. 가상 마이크로비트 -->
+<section class="card">
+
+    <h2>⑥ 가상 마이크로비트</h2>
+
+    <p class="small">
+        AI 인식 결과가 마이크로비트로 전달되었다고 가정하여
+        기본 5×5 LED의 작동을 시뮬레이션합니다.
+    </p>
+
+    <div class="microbit">
+
+        <h3>BBC micro:bit V1.5</h3>
+
+        <div id="ledGrid" class="led-grid">
+        </div>
+
+        <div id="ledState" class="led-state">
+            대기 중
+        </div>
+
+    </div>
+
+    <div class="status" style="text-align:center">
+        <strong>가상 장치 상태:</strong>
+        <span id="deviceStatus" class="ok">
+            시뮬레이션 준비 완료
+        </span>
+    </div>
+
+    <p class="small">
+        O : 쓰레기 종류 인식 성공<br>
+        X : 인식 신뢰도 부족 또는 알 수 없는 클래스
+    </p>
+
+</section>
+
+
+<!-- 7. 수동 테스트 -->
+<section class="card">
+
+    <h2>⑦ LED 수동 테스트</h2>
+
+    <p class="small">
+        AI 분석 없이도 가상 마이크로비트의 LED를
+        직접 테스트할 수 있습니다.
+    </p>
+
+    <div class="manual-buttons">
+
+        <button onclick="manualLED('O')">
+            O 표시
+        </button>
+
+        <button class="danger" onclick="manualLED('X')">
+            X 표시
+        </button>
+
+        <button class="secondary" onclick="manualLED('OFF')">
+            LED 끄기
+        </button>
+
+    </div>
+
+</section>
+
+
+<!-- 8. 기록 -->
+<section class="card">
+
+    <h2>⑧ 인식 기록</h2>
+
+    <div id="history" class="log">
+        아직 인식 기록이 없습니다.
+    </div>
+
+    <button class="secondary"
+        onclick="clearHistory()">
+        기록 초기화
+    </button>
+
+</section>
+
+
+<footer>
+    분리수거 도우미<br>
+    Teachable Machine + micro:bit 시뮬레이션
+</footer>
+
+</div>
+
+
+<script>
+
+// ======================================
+// 1. 기본 설정
+// ======================================
+
+let model = null;
+let classLabels = [];
+
+let currentMode = "upload";
+let uploadedImageReady = false;
+
+let webcam = null;
+let cameraRunning = false;
+let cameraLoopId = null;
+
+let confidenceLimit = 80;
+let historyList = [];
+
+let candidateClass = "";
+let candidateCount = 0;
+
+const STABLE_COUNT = 3;
+
+// 클래스 이름에 따른 안내문
+// AI의 원본 클래스 이름은 변경하지 않음
+
+const instructions = {
+    "a": {
+        name: "종이",
+        message: "종이류에 버리세요!"
+    },
+
+    "b": {
+        name: "캔",
+        message: "캔류에 버리세요!"
+    },
+
+    "c": {
+        name: "플라스틱",
+        message: "플라스틱류에 버리세요!"
+    }
+};
+
+
+// ======================================
+// 2. 가상 LED 생성
+// ======================================
+
+const patterns = {
+
+    O: [
+        "01110",
+        "10001",
+        "10001",
+        "10001",
+        "01110"
+    ],
+
+    X: [
+        "10001",
+        "01010",
+        "00100",
+        "01010",
+        "10001"
+    ],
+
+    OFF: [
+        "00000",
+        "00000",
+        "00000",
+        "00000",
+        "00000"
+    ]
+};
+
+
+function createLED() {
+
+    const grid = document.getElementById("ledGrid");
+
+    grid.innerHTML = "";
+
+    for (let i = 0; i < 25; i++) {
+
+        const led = document.createElement("div");
+
+        led.className = "led";
+
+        grid.appendChild(led);
+    }
+
+    showLED("OFF");
+}
+
+
+function showLED(type) {
+
+    const grid = document.getElementById("ledGrid");
+
+    const leds = grid.children;
+
+    const pattern = patterns[type] || patterns.OFF;
+
+    for (let r = 0; r < 5; r++) {
+
+        for (let c = 0; c < 5; c++) {
+
+            const index = r * 5 + c;
+
+            const led = leds[index];
+
+            const on = pattern[r][c] === "1";
+
+            led.className = "led";
+
+            if (on && type === "O") {
+                led.classList.add("green");
+            }
+
+            if (on && type === "X") {
+                led.classList.add("red");
+            }
+        }
+    }
+
+    const state = document.getElementById("ledState");
+
+    if (type === "O") {
+        state.textContent = "O : 인식 성공";
+        state.style.color = "#28df80";
+    }
+
+    else if (type === "X") {
+        state.textContent = "X : 인식 불확실";
+        state.style.color = "#ff7777";
+    }
+
+    else {
+        state.textContent = "대기 중";
+        state.style.color = "white";
+    }
+}
+
+
+function manualLED(type) {
+
+    showLED(type);
+
+    addHistory("수동 LED 테스트: " + type);
+}
+
+
+// ======================================
+// 3. 기본 화면 함수
+// ======================================
+
+function setStatus(id, message, type = "") {
+
+    const element = document.getElementById(id);
+
+    element.textContent = message;
+
+    element.className = "status " + type;
+}
+
+
+function showResult(name, message, type = "neutral") {
+
+    document.getElementById("resultName").textContent = name;
+
+    document.getElementById("resultMessage").textContent = message;
+
+    document.getElementById("resultBox").className = type;
+}
+
+
+function updateConfidence() {
+
+    confidenceLimit = Number(
+        document.getElementById("confidence").value
+    );
+
+    document.getElementById("confidenceText").textContent =
+        confidenceLimit + "%";
+}
+
+
+// ======================================
+// 4. AI 모델 불러오기
+// ======================================
+
+async function loadModel() {
+
+    if (typeof tmImage === "undefined") {
+
+        setStatus(
+            "modelStatus",
+            "AI 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.",
+            "error"
+        );
+
+        return;
+    }
+
+    const url = document.getElementById("modelURL")
+        .value.trim();
+
+    if (!url) {
+
+        setStatus(
+            "modelStatus",
+            "모델 URL을 입력하세요.",
+            "error"
+        );
+
+        return;
+    }
+
+    const button = document.getElementById("loadBtn");
+
+    button.disabled = true;
+
+    await stopCamera();
+
+    model = null;
+    classLabels = [];
+
+    setStatus(
+        "modelStatus",
+        "AI 모델을 불러오는 중입니다..."
+    );
+
+    try {
+
+        const baseURL = url.endsWith("/")
+            ? url
+            : url + "/";
+
+        const loadedModel = await tmImage.load(
+            baseURL + "model.json",
+            baseURL + "metadata.json"
+        );
+
+        const labels = loadedModel.getClassLabels();
+
+        if (!labels || labels.length === 0) {
+            throw new Error("학습된 클래스가 없습니다.");
+        }
+
+        model = loadedModel;
+        classLabels = labels;
+
+        setStatus(
+            "modelStatus",
+            "모델 연결 성공! 클래스 " +
+            classLabels.length + "개를 불러왔습니다.",
+            "ok"
+        );
+
+        document.getElementById("analyzeBtn").disabled =
+            !uploadedImageReady;
+
+        addHistory("AI 모델 연결 성공");
+
+    }
+
+    catch (error) {
+
+        model = null;
+
+        setStatus(
+            "modelStatus",
+            "모델 연결 실패: " + error.message,
+            "error"
+        );
+
+        console.error(error);
+
+    }
+
+    finally {
+
+        button.disabled = false;
+    }
+}
+
+
+// ======================================
+// 5. 이미지 업로드
+// ======================================
+
+const imageInput = document.getElementById("imageInput");
+
+imageInput.addEventListener("change", function(event) {
+
+    const file = event.target.files[0];
+
+    if (!file) return;
+
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+
+        alert("JPG 또는 PNG 이미지를 선택하세요.");
+
+        return;
+    }
+
+    uploadedImageReady = false;
+
+    document.getElementById("analyzeBtn").disabled = true;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+
+        const img = new Image();
+
+        img.onload = function() {
+
+            const preview = document.getElementById("preview");
+
+            preview.innerHTML = "";
+
+            img.style.display = "block";
+
+            img.style.maxWidth = "100%";
+
+            img.style.maxHeight = "400px";
+
+            preview.appendChild(img);
+
+            window.uploadedImage = img;
+
+            uploadedImageReady = true;
+
+            document.getElementById("analyzeBtn").disabled =
+                !model;
+
+            showResult(
+                "분석 준비 완료",
+                "이미지 분석 버튼을 눌러 주세요."
+            );
+        };
+
+        img.onerror = function() {
+            alert("이미지를 불러오지 못했습니다.");
+        };
+
+        img.src = e.target.result;
+    };
+
+    reader.onerror = function() {
+        alert("파일을 읽지 못했습니다.");
+    };
+
+    reader.readAsDataURL(file);
+
+});
+
+
+// ======================================
+// 6. 이미지 분석
+// ======================================
+
+async function predictImage(image) {
+
+    if (!model) {
+        throw new Error("AI 모델을 먼저 불러오세요.");
+    }
+
+    const predictions = await model.predict(image);
+
+    predictions.sort((a, b) =>
+        b.probability - a.probability
+    );
+
+    return predictions;
+}
+
+
+// ======================================
+// 7. 확률 표시
+// ======================================
+
+function displayProbabilities(predictions) {
+
+    const area = document.getElementById("probabilities");
+
+    area.innerHTML = "";
+
+    predictions.forEach(item => {
+
+        const percentage = item.probability * 100;
+
+        const row = document.createElement("div");
+
+        row.className = "progress-row";
+
+        const title = document.createElement("div");
+
+        title.className = "progress-title";
+
+        const name = document.createElement("span");
+
+        name.textContent = item.className;
+
+        const percent = document.createElement("strong");
+
+        percent.textContent = percentage.toFixed(1) + "%";
+
+        title.appendChild(name);
+
+        title.appendChild(percent);
+
+        const bar = document.createElement("progress");
+
+        bar.max = 100;
+
+        bar.value = percentage;
+
+        row.appendChild(title);
+
+        row.appendChild(bar);
+
+        area.appendChild(row);
+    });
+}
+
+
+// ======================================
+// 8. AI 결과 처리
+// ======================================
+
+async function processPrediction(predictions, fromCamera = false) {
+
+    displayProbabilities(predictions);
+
+    const best = predictions[0];
+
+    const percentage = best.probability * 100;
+
+    // 신뢰도 기준 미달
+    if (percentage < confidenceLimit) {
+
+        showResult(
+            "인식 불확실",
+            "쓰레기를 다시 촬영해 주세요.",
+            "warning"
+        );
+
+        document.getElementById("guideBox").textContent =
+            "AI가 쓰레기의 종류를 확실하게 인식하지 못했습니다. 다시 촬영해 주세요.";
+
+        showLED("X");
+
+        document.getElementById("deviceStatus").textContent =
+            "인식 신뢰도 부족";
+
+        addHistory(
+            "인식 불확실 (" + percentage.toFixed(1) + "%)"
+        );
+
+        candidateClass = "";
+        candidateCount = 0;
+
+        return;
+    }
+
+    const className = best.className;
+
+    // 원본 클래스 이름 그대로 사용
+    const guide = instructions[className];
+
+    // 알 수 없는 클래스
+    if (!guide) {
+
+        showResult(
+            "알 수 없는 종류",
+            "등록되지 않은 클래스입니다.",
+            "warning"
+        );
+
+        document.getElementById("guideBox").textContent =
+            "해당 종류의 분리수거 안내가 등록되어 있지 않습니다.";
+
+        showLED("X");
+
+        document.getElementById("deviceStatus").textContent =
+            "등록되지 않은 클래스";
+
+        candidateClass = "";
+        candidateCount = 0;
+
+        return;
+    }
+
+    // 정상 인식
+    showResult(
+        guide.name + " (" + className + ")",
+        guide.message + " 신뢰도: " +
+        percentage.toFixed(1) + "%",
+        "success"
+    );
+
+    document.getElementById("guideBox").textContent =
+        "♻️ " + guide.message +
+        " 올바른 분리수거를 실천해 주세요!";
+
+    if (!fromCamera) {
+
+        // 이미지 업로드는 1회 판단
+        showLED("O");
+
+        document.getElementById("deviceStatus").textContent =
+            "인식 성공 - O 표시";
+
+        addHistory(
+            guide.name + " 인식 (" +
+            percentage.toFixed(1) + "%)"
+        );
+
+        return;
+    }
+
+    // 카메라에서는 동일 결과가 3회 연속
+    // 인식되었을 때 LED 표시
+    if (candidateClass === className) {
+
+        candidateCount++;
+
+    } else {
+
+        candidateClass = className;
+
+        candidateCount = 1;
+    }
+
+    if (candidateCount >= STABLE_COUNT) {
+
+        showLED("O");
+
+        document.getElementById("deviceStatus").textContent =
+            "인식 성공 - O 표시";
+
+    }
+
+}
+
+
+// ======================================
+// 9. 이미지 분석 버튼
+// ======================================
+
+async function analyzeImage() {
+
+    if (!model) {
+        alert("AI 모델을 먼저 불러오세요.");
+        return;
+    }
+
+    if (!uploadedImageReady) {
+        alert("이미지를 먼저 선택하세요.");
+        return;
+    }
+
+    const button = document.getElementById("analyzeBtn");
+
+    button.disabled = true;
+
+    try {
+
+        showResult(
+            "분석 중",
+            "AI가 쓰레기를 분석하고 있습니다."
+        );
+
+        const predictions = await predictImage(
+            window.uploadedImage
+        );
+
+        await processPrediction(predictions, false);
+
+    }
+
+    catch (error) {
+
+        showResult(
+            "분석 오류",
+            error.message,
+            "warning"
+        );
+
+        showLED("X");
+
+        console.error(error);
+
+    }
+
+    finally {
+
+        button.disabled = false;
+    }
+}
+
+
+// ======================================
+// 10. 카메라 모드 변경
+// ======================================
+
+async function switchMode(mode) {
+
+    if (mode === currentMode) return;
+
+    await stopCamera();
+
+    currentMode = mode;
+
+    candidateClass = "";
+    candidateCount = 0;
+
+    document.getElementById("uploadArea").style.display =
+        mode === "upload" ? "block" : "none";
+
+    document.getElementById("cameraArea").style.display =
+        mode === "camera" ? "block" : "none";
+
+    document.getElementById("uploadModeBtn").className =
+        mode === "upload" ? "active" : "secondary";
+
+    document.getElementById("cameraModeBtn").className =
+        mode === "camera" ? "active" : "secondary";
+
+    showLED("OFF");
+
+    showResult(
+        "분석 대기 중",
+        "인식 방식을 선택했습니다."
+    );
+}
+
+
+// ======================================
+// 11. 카메라 시작
+// ======================================
+
+async function startCamera() {
+
+    if (!model) {
+
+        alert("먼저 AI 모델을 불러오세요.");
+
+        return;
+    }
+
+    if (!navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia) {
+
+        alert("현재 브라우저에서 카메라를 사용할 수 없습니다.");
+
+        return;
+    }
+
+    if (cameraRunning) return;
+
+    try {
+
+        webcam = new tmImage.Webcam(400, 300, true);
+
+        await webcam.setup();
+
+        await webcam.play();
+
+        const area = document.getElementById("cameraPreview");
+
+        area.innerHTML = "";
+
+        area.appendChild(webcam.canvas);
+
+        cameraRunning = true;
+
+        candidateClass = "";
+        candidateCount = 0;
+
+        showLED("OFF");
+
+        document.getElementById("deviceStatus").textContent =
+            "카메라 인식 대기 중";
+
+        showResult(
+            "카메라 실행 중",
+            "쓰레기를 카메라에 보여 주세요."
+        );
+
+        cameraLoop();
+
+    }
+
+    catch (error) {
+
+        await stopCamera();
+
+        document.getElementById("cameraPreview").textContent =
+            "카메라 실행 실패: " + error.message;
+
+        showResult(
+            "카메라 오류",
+            error.message,
+            "warning"
+        );
+
+        console.error(error);
+    }
+}
+
+
+// ======================================
+// 12. 실시간 카메라 분석
+// ======================================
+
+async function cameraLoop() {
+
+    if (!cameraRunning || !webcam || !model) return;
+
+    try {
+
+        webcam.update();
+
+        const predictions = await predictImage(webcam.canvas);
+
+        if (!cameraRunning) return;
+
+        await processPrediction(predictions, true);
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        showResult(
+            "분석 오류",
+            error.message,
+            "warning"
+        );
+
+        await stopCamera();
+
+        return;
+    }
+
+    if (cameraRunning) {
+
+        cameraLoopId = requestAnimationFrame(cameraLoop);
+    }
+}
+
+
+// ======================================
+// 13. 카메라 중지
+// ======================================
+
+async function stopCamera() {
+
+    cameraRunning = false;
+
+    if (cameraLoopId !== null) {
+
+        cancelAnimationFrame(cameraLoopId);
+
+        cameraLoopId = null;
+    }
+
+    if (webcam) {
+
+        try {
+
+            webcam.stop();
+
+            if (webcam.stream) {
+
+                webcam.stream.getTracks().forEach(track => {
+                    track.stop();
+                });
+            }
+
+        }
+
+        catch (error) {
+
+            console.warn(error);
+        }
+
+        webcam = null;
+    }
+
+    const area = document.getElementById("cameraPreview");
+
+    if (area) {
+
+        area.textContent = "카메라가 중지되었습니다.";
+    }
+
+    candidateClass = "";
+    candidateCount = 0;
+}
+
+
+// ======================================
+// 14. 인식 기록
+// ======================================
+
+function addHistory(message) {
+
+    const time = new Date().toLocaleTimeString("ko-KR");
+
+    historyList.unshift(
+        time + " - " + message
+    );
+
+    historyList = historyList.slice(0, 30);
+
+    renderHistory();
+}
+
+
+function renderHistory() {
+
+    const area = document.getElementById("history");
+
+    area.innerHTML = "";
+
+    if (historyList.length === 0) {
+
+        area.textContent = "아직 인식 기록이 없습니다.";
+
+        return;
+    }
+
+    historyList.forEach(item => {
+
+        const line = document.createElement("div");
+
+        line.textContent = "• " + item;
+
+        area.appendChild(line);
+    });
+}
+
+
+function clearHistory() {
+
+    historyList = [];
+
+    renderHistory();
+}
+
+
+// ======================================
+// 15. 페이지 종료 시 카메라 해제
+// ======================================
+
+window.addEventListener("beforeunload", function() {
+
+    cameraRunning = false;
+
+    if (webcam) {
+
+        webcam.stop();
+    }
+
+});
+
+
+// ======================================
+// 16. 초기 화면 실행
+// ======================================
+
+createLED();
+
+showLED("OFF");
+
+</script>
+
+</body>
+</html>
